@@ -1,0 +1,26 @@
+name: CI
+
+on: [ workflow_dispatch ]
+
+jobs:
+  build_container:
+    name: Linux x64 (Clang)
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build x64 binary
+        run: mkdir build && cd build && cmake .. && cmake --build . --parallel 2
+        env:
+          CC: clang
+          CXX: clang++
+
+      - name: Move binary to docker directory
+        run: mv build/sqfvm docker/
+
+      - name: Build docker image
+        working-directory: docker/
+        run: docker build -t sqfvm/sqfvm:latest
+     
+      - name: Push binary
+        run: docker push ghcr.io/SQFvm/sqfvm:latest

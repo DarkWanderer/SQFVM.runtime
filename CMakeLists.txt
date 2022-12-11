@@ -61,32 +61,17 @@ list(APPEND sqfvm_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/git_sha1.cpp")
 
 find_package(Threads)
 
-add_executable(sqfvm ${sqfvm_SOURCES})
-
-target_link_libraries(sqfvm ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${ST_CXXFS_LIBS})
-target_include_directories(sqfvm PUBLIC ${PROJECT_SOURCE_DIR}/src)
-target_compile_definitions(sqfvm PRIVATE SQFVM_BUILD)
-
-add_library(libsqfvm SHARED ${sqfvm_SOURCES})
-target_include_directories(libsqfvm PUBLIC ${PROJECT_SOURCE_DIR}/src)
-target_compile_definitions(libsqfvm 
-    PUBLIC DISABLE_CLIPBOARD 
-    PRIVATE SQFVM_BUILD # this is a define visible only to the library itself
-)
-set_target_properties(libsqfvm PROPERTIES PREFIX "")
+add_library(sqfvm-object OBJECT ${sqfvm_SOURCES})
+set_property(TARGET sqfvm-object PROPERTY POSITION_INDEPENDENT_CODE 1)
+target_include_directories(sqfvm-object PUBLIC ${PROJECT_SOURCE_DIR}/src)
+target_compile_definitions(sqfvm-object PRIVATE SQFVM_BUILD)
 
 if (SQFVM_ENABLE_SQC_SUPPORT)
-    target_compile_definitions(sqfvm PUBLIC SQF_SQC_SUPPORT)
-    target_compile_definitions(libsqfvm PUBLIC SQF_SQC_SUPPORT)
+    target_compile_definitions(sqfvm-object PUBLIC SQF_SQC_SUPPORT)
 endif()
 
-if (SQFVM_ENABLE_ARMA2_LOCALKEYWORD)
-    target_compile_definitions(sqfvm PUBLIC SQFVM_ARMA2_SYNTAX)
-    target_compile_definitions(libsqfvm PUBLIC SQFVM_ARMA2_SYNTAX)
-endif ()
-
 if (SQFVM_ENABLE_FULL_DIAGNOSE)
-    target_compile_definitions(sqfvm PUBLIC 
+    target_compile_definitions(sqfvm-object PUBLIC 
         DF__SQF_RUNTIME__ASSEMBLY_DEBUG_ON_EXECUTE
         DF__SQF_FILEIO__ALL_FILES
         DF__SQF_FILEIO__TRACE_REESOLVE
@@ -98,6 +83,17 @@ if (SQFVM_ENABLE_FULL_DIAGNOSE)
         DF__CLI_PRINT_TCLAP_ARGUMENTS
     )
 endif ()
+
+
+if (SQFVM_ENABLE_ARMA2_LOCALKEYWORD)
+    target_compile_definitions(sqfvm-object PUBLIC SQFVM_ARMA2_SYNTAX)
+endif ()
+
+add_executable(sqfvm $<TARGET_OBJECTS:sqfvm-object>)
+target_link_libraries(sqfvm ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${ST_CXXFS_LIBS})
+
+add_library(libsqfvm SHARED $<TARGET_OBJECTS:sqfvm-object>)
+set_target_properties(libsqfvm PROPERTIES PREFIX "")
 
 enable_testing()
 add_subdirectory(tests)
